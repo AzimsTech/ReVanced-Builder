@@ -59,7 +59,7 @@ jobs:
               {
                 "org": "google-inc",
                 "repo": "youtube",
-                "outFile": "yt",
+                "outFile": "yt-${VERSION}",
                 "version": "$VERSION"
               }
             ]
@@ -72,12 +72,6 @@ jobs:
           # Run patching
           ./start-patching.sh
           
-      - name: Rename APK
-        run: |
-         # Rename the patched APK to include version
-          VERSION="${{ steps.yt-version.outputs.version }}"
-          mv yt-patched.apk yt-${VERSION}-patched.apk
-
       - name: Generate build information
         run: |
           YT_VERSION="${{ steps.yt-version.outputs.version }}"
@@ -99,7 +93,9 @@ jobs:
         with:
           tag_name: yt-${{ steps.yt-version.outputs.version }}
           body_path: yt-revanced-info.md
-          files: yt-${{ steps.yt-version.outputs.version }}-patched.apk
+          files: |
+            yt-${{ steps.yt-version.outputs.version }}-patched.apk
+            downloads/yt-${{ steps.yt-version.outputs.version }}.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
