@@ -1,0 +1,105 @@
+name: Build ReVanced YT
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * *'  # Daily build
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: 21
+          distribution: 'zulu'
+
+      - name: Make scripts executable
+        run: chmod +x *.sh
+
+      - name: Get ReVanced CLI (Stable)
+        id: get-stable-cli
+        run: |
+          VERSION=$(./get-stable-cli.sh | sed -n 's|.*/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)/.*|\1|p' | head -n1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get Dev Patches
+        id: get-dev-patches
+        run: |
+          VERSION=$(./get-dev-rvp.sh | grep -oE 'patches-[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+' | head -n1 | sed 's/^patches-//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Determine YT Version
+        id: yt-version
+        run: |
+          VERSION=$(./fetch-yt-ver.sh | awk '{print $NF}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+      - name: Get APKMirror Downloader
+        run: ./get-apkmd.sh
+
+      - name: Download YT APK
+        run: |
+          VERSION="${{ steps.yt-version.outputs.version }}"
+          # Download universal APK
+          cat <<EOF > apps.json
+          {
+            "options": {
+              "arch": "arm64-v8a",
+              "outDir": "downloads"
+            },
+            "apps": [
+              {
+                "org": "google-inc",
+                "repo": "youtube",
+                "outFile": "yt",
+                "version": "$VERSION"
+              }
+            ]
+          }
+          EOF
+          ./apkmd apps.json
+
+      - name: Patch YT APK
+        run: |
+          # Run patching
+          ./start-patching.sh
+          
+      - name: Rename APK
+        run: |
+         # Rename the patched APK to include version
+          VERSION="${{ steps.yt-version.outputs.version }}"
+          mv yt-patched.apk yt-${VERSION}-patched.apk
+
+      - name: Generate build information
+        run: |
+          YT_VERSION="${{ steps.yt-version.outputs.version }}"
+          CLI_VERSION="${{ steps.get-stable-cli.outputs.version }}"
+          PATCHES_VERSION="${{ steps.get-dev-patches.outputs.version }}"
+          cat <<EOF > yt-revanced-info.md
+          ## 💡 ReVanced YT Build Information
+
+          - **📺 YT Version**: \`${YT_VERSION}\`
+          - **📦 APK Filename**: \`yt-${YT_VERSION}-patched.apk\`
+          - **🩹 ReVanced Patches Version**: \`${PATCHES_VERSION}\`
+          - **🔨 ReVanced CLI Version**: \`${CLI_VERSION}\`
+          - **📅 Build Date**: \`$(TZ=Asia/Kuala_Lumpur date +%Y-%m-%d)\` \`$(TZ=Asia/Kuala_Lumpur date +%H:%M:%S%:z)\`
+
+          EOF
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: yt-${{ steps.yt-version.outputs.version }}
+          body_path: yt-revanced-info.md
+          files: yt-${{ steps.yt-version.outputs.version }}-patched.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+set -euo pipefail
+
+REPO="tanishqmanuja/apkmirror-downloader"
+API="https://api.github.com/repos/$REPO/releases?per_page=10"
+
+# Step 1: Fetch releases
+releases=$(curl -s "$API")
+
+# Step 2: Get the latest release tag (no prerelease filtering)
+latest_tag=$(echo "$releases" \
+  | jq -r '.[0].tag_name')
+
+if [ -z "$latest_tag" ]; then
+  echo "❌ No release found!"
+  exit 1
+fi
+echo "Found latest release: $latest_tag"
+
+# Step 3: Get the download URL for the 'apkmd' asset (no extension)
+download_url=$(echo "$releases" \
+  | jq -r --arg tag "$latest_tag" '
+    .[] | select(.tag_name == $tag) | .assets[] |
+    select(.name == "apkmd") |
+    .browser_download_url
+  ' | head -n1)
+
+if [ -z "$download_url" ]; then
+  echo "❌ No apkmd asset found for $latest_tag"
+  exit 1
+fi
+
+echo "Downloading: $download_url"
+curl -L "$download_url" -o apkmd
+chmod +x apkmd
+echo "✅ Saved and made executable: apkmd"
