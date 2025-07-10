@@ -91,7 +91,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: yt-${{ steps.yt-version.outputs.version }}
+          tag_name: yt-${{ steps.yt-version.outputs.version }}(${{ steps.get-dev-patches.outputs.version }})
           body_path: yt-revanced-info.md
           files: |
             yt-${{ steps.yt-version.outputs.version }}-patched.apk
