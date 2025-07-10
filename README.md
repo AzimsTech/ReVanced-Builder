@@ -1,3 +1,5 @@
+![cover](https://github.com/user-attachments/assets/0203c0f9-8bde-41db-ba8e-7e0231e87102)
+
 # ReVanced-Builder :hammer:
 
 [![Downloads][downloads-shield]][downloads-url]
