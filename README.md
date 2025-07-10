@@ -1,4 +1,4 @@
-![cover](https://github.com/user-attachments/assets/0203c0f9-8bde-41db-ba8e-7e0231e87102)
+![cover](https://github.com/user-attachments/assets/21b2cebc-7005-4213-9755-092d0eec0ee2)
 
 # ReVanced-Builder :hammer:
 
