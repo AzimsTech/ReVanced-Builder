@@ -109,7 +109,7 @@ jobs:
           | SHA-256 Checksum | Filename |
           |-----------------|----------|
           | \`$(sha256sum yt-${YT_VERSION}-patched.apk | awk '{print $1}')\` | yt-${YT_VERSION}-patched.apk |
-          | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | yt-${YT_VERSION}.apk |
+          | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | yt-${YT_VERSION}.apk (original) |
           EOF
 
       - name: Create GitHub release
@@ -119,7 +119,7 @@ jobs:
           body_path: yt-revanced-info.md
           files: |
             yt-${{ steps.yt-version.outputs.version }}-patched.apk
-            downloads/yt-${{ steps.yt-version.outputs.version }}.apk
+            # downloads/yt-${{ steps.yt-version.outputs.version }}.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
