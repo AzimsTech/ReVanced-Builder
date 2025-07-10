@@ -97,19 +97,19 @@ jobs:
           cat <<EOF > yt-revanced-info.md
           ## 💡 ReVanced YT Build Information
 
-          - **📺 YT Version**: \`${YT_VERSION}\` [SHA-256 signatures]($URL)
+          - **📺 YT Version**: \`${YT_VERSION}\` [SHA-256]($URL)
           - **📦 APK Filename**: \`yt-${YT_VERSION}-patched.apk\`
           - **🩹 ReVanced Patches Version**: \`${PATCHES_VERSION}\`
           - **🔨 ReVanced CLI Version**: \`${CLI_VERSION}\`
           - **📅 Build Date**: \`$(TZ=Asia/Kuala_Lumpur date +%Y-%m-%d)\` \`$(TZ=Asia/Kuala_Lumpur date +%H:%M:%S%:z)\`
 
           -----
-          ### 🔐 SHA-256 signatures
+          ### 🔐 APK file hashes 
 
-          | SHA256 Checksum | Filename |
+          | SHA-256 Checksum | Filename |
           |-----------------|----------|
           | \`$(sha256sum yt-${YT_VERSION}-patched.apk | awk '{print $1}')\` | yt-${YT_VERSION}-patched.apk |
-          | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | downloads/yt-${YT_VERSION}.apk |
+          | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | yt-${YT_VERSION}.apk |
           EOF
 
       - name: Create GitHub release
