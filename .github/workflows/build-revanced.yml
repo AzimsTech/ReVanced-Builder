@@ -45,7 +45,15 @@ jobs:
       - name: Get APKMirror Downloader
         run: ./get-apkmd.sh
 
+      - name: Cache YT APK 
+        id: cache-apk
+        uses: actions/cache@v4
+        with: 
+          path: downloads/yt-${{ steps.yt-version.outputs.version }}.apk
+          key: ${{ steps.yt-version.outputs.version }}
+
       - name: Download YT APK
+        if: steps.cache-apk.outputs.cache-hit != 'true'
         run: |
           VERSION="${{ steps.yt-version.outputs.version }}"
           # Download universal APK
@@ -67,10 +75,23 @@ jobs:
           EOF
           ./apkmd apps.json
 
-      - name: Patch YT APK
+      - name: Cache ReVanced keystore
+        id: cache-keystore
+        uses: actions/cache@v4
+        with:
+          path: yt-patched.keystore
+          key: yt-patched.keystore
+
+      - name: Patch YT APK and generate keystore
+        if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
-          # Run patching
-          ./start-patching.sh
+            ./start-patching.sh
+            mv yt-*-patched.keystore yt-patched.keystore
+
+      - name: Patch YT APK and use cached keystore
+        if: steps.cache-keystore.outputs.cache-hit == 'true'
+        run: |
+            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk --keystore yt-patched.keystore
 
       - name: Generate APKmirror url
         id: generate-apkmirror-url
@@ -120,6 +141,7 @@ jobs:
           files: |
             yt-${{ steps.yt-version.outputs.version }}-patched.apk
             # downloads/yt-${{ steps.yt-version.outputs.version }}.apk
+            yt-patched.keystore
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
