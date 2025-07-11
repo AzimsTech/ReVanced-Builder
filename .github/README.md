@@ -8,13 +8,13 @@
 
 🤖 Automate the process of downloading, patching, and releasing a patched Revanced YT APK.
 
-| Script | Description |
-|:---------|:--------|
-| `get-stable-cli.sh` | Retrieves and downloads the latest [revanced-cli](https://github.com/revanced/revanced-cli) JAR URL from the Revanced API |
-| `get-dev-rvp.sh` | Retrieves and downloads the latest pre-release of the [revanced-patches](https://github.com/revanced/revanced-patches) .RVP patch file. |
-| `fetch-yt-ver.sh` | Uses [revanced-cli](https://github.com/revanced/revanced-cli) to extract and print the latest supported YT version from patch index 193 (com.google.android.YT). |
-| `get-apkmd.sh` | Fetch the latest apkmd binary release from the [tanishqmanuja/apkmirror-downloader](https://github.com/tanishqmanuja/apkmirror-downloader) GitHub repo , download it, save it as apkmd, and make it executable. |
-| `start-patching.sh` | Run the revanced-cli to patch the yt.apk file using the specified .rvp patch bundle. |
+| Script              | Description                                                                                                                                                         |
+|:--------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `get-stable-cli.sh` | Retrieves and downloads the latest [revanced-cli][cli-url] JAR URL from the Revanced API                                                                            |
+| `get-dev-rvp.sh`    | Retrieves and downloads the latest pre-release of the [revanced-patches][patches-url] .RVP patch file.                                                              |
+| `fetch-yt-ver.sh`   | Uses [revanced-cli][cli-url] to extract and print the latest supported YT version from [revanced-patches][patches-url]                                              |
+| `get-apkmd.sh`      | Fetch the latest apkmd binary release from the [tanishqmanuja/apkmirror-downloader][apkmd-url] GitHub repo , download it, save it as apkmd, and make it executable. |
+
 
 <!-- Shields -->
 
@@ -23,3 +23,9 @@
 [downloads-shield]: https://img.shields.io/github/downloads/azimstech/revanced-builder/total?style=for-the-badge&logo=github
 [downloads-url]: https://github.com/azimstech/revanced-builder/releases/latest
 [release-shield]: https://img.shields.io/github/v/release/azimstech/revanced-builder?style=for-the-badge
+
+<!-- Urls -->
+
+[patches-url]:https://github.com/revanced/revanced-patches
+[apkmd-url]:https://github.com/tanishqmanuja/apkmirror-downloader
+[cli-url]:https://github.com/revanced/revanced-cli
