@@ -1,6 +1,6 @@
 ![cover](cover.png)
 
-# ReVanced-Builder :hammer:
+# ReVanced-Builder :hammer: <img src="qrcode.png" width="14%" align="right" />
 
 [![Downloads][downloads-shield]][downloads-url]
 [![GitHub Workflow Status][ci-status-shield]][ci-url]
