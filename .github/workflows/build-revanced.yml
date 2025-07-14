@@ -3,10 +3,18 @@ name: Build ReVanced YT
 on:
   workflow_dispatch:  # Manual trigger
   schedule:
-    - cron: '0 12 * * *'  # Daily build at 8:00 PM MYT (12:00 UTC)
+   - cron: '0 12 * * *'  # Daily build at 8:00 PM MYT (12:00 UTC)
 
 permissions:
   contents: write
+
+env:
+  JAVA_VERSION: 21
+  JAVA_DISTRIBUTION: 'zulu'
+  ARCH: 'arm64-v8a'
+  DOWNLOADS_DIR: 'downloads'
+  KEYSTORE_NAME: 'yt-patched.keystore'
+  TIMEZONE: 'Asia/Kuala_Lumpur'
 
 jobs:
   build:
@@ -14,12 +22,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history including tags
 
-      - name: Set up Java 21
+      - name: Set up Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v3
         with:
-          java-version: 21
-          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
 
       - name: Make scripts executable
         run: chmod +x *.sh
@@ -41,6 +51,80 @@ jobs:
         run: |
           VERSION=$(./fetch-yt-ver.sh | awk '{print $NF}')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get last release tag and extract patch version
+        id: get-last-patch
+        run: |
+          # Fetch tags to make sure we have them
+          git fetch --tags || echo "Failed to fetch tags"
+          
+          # Debug: Show git status and available tags
+          echo "=== Git Status ==="
+          git status --porcelain
+          echo "=== All tags (sorted) ==="
+          git tag --sort=-version:refname || echo "No tags found"
+          echo "=== Last 5 tags ==="
+          git tag --sort=-version:refname | head -5 || echo "No tags found"
+          
+          # Get current patch version for comparison
+          CURRENT_PATCH="v${{ steps.get-dev-patches.outputs.version }}"
+          echo "=== Current patch version: $CURRENT_PATCH ==="
+          
+          # Get tags that match the new format (contains underscore and v prefix)
+          MATCHING_TAGS=$(git tag --sort=-version:refname | grep -E ".*_v[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          echo "=== Matching tags (new format): ==="
+          echo "$MATCHING_TAGS"
+          
+          # Find the most recent tag that has a different patch version than current
+          LAST_TAG="none"
+          if [[ -n "$MATCHING_TAGS" ]]; then
+            while IFS= read -r tag; do
+              if [[ -n "$tag" ]]; then
+                # Extract patch version from this tag
+                TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/.*_\(v[0-9]\+\.[0-9]\+\.[0-9]\+-dev\.[0-9]\+\).*/\1/p')
+                
+                # If no -dev part, try without it
+                if [[ -z "$TAG_PATCH_VERSION" ]]; then
+                  TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/.*_\(v[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+                fi
+                
+                echo "Tag: $tag -> Patch: $TAG_PATCH_VERSION"
+                
+                # If this tag's patch version is different from current, use it
+                if [[ "$TAG_PATCH_VERSION" != "$CURRENT_PATCH" ]]; then
+                  LAST_TAG="$tag"
+                  LAST_PATCH_VERSION="$TAG_PATCH_VERSION"
+                  break
+                fi
+              fi
+            done <<< "$MATCHING_TAGS"
+          fi
+          
+          echo "=== Selected last tag: $LAST_TAG ==="
+          echo "=== Last patch version: $LAST_PATCH_VERSION ==="
+          
+          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+          
+          if [[ "$LAST_TAG" != "none" ]]; then
+            echo "last_patch_version=$LAST_PATCH_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "=== No previous tags found with different patch version ==="
+            echo "last_patch_version=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog URL
+        id: generate-changelog
+        run: |
+          LAST_PATCH="${{ steps.get-last-patch.outputs.last_patch_version }}"
+          CURRENT_PATCH="v${{ steps.get-dev-patches.outputs.version }}"
+          
+          if [[ "$LAST_PATCH" != "none" && "$LAST_PATCH" != "$CURRENT_PATCH" ]]; then
+            CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/${LAST_PATCH}...${CURRENT_PATCH}"
+            echo "url=$CHANGELOG_URL" >> $GITHUB_OUTPUT
+            echo "has_changelog=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changelog=false" >> $GITHUB_OUTPUT
+          fi
     
       - name: Get APKMirror Downloader
         run: ./get-apkmd.sh
@@ -49,7 +133,7 @@ jobs:
         id: cache-apk
         uses: actions/cache@v4
         with: 
-          path: downloads/yt-${{ steps.yt-version.outputs.version }}.apk
+          path: ${{ env.DOWNLOADS_DIR }}/yt-${{ steps.yt-version.outputs.version }}.apk
           key: ${{ steps.yt-version.outputs.version }}
 
       - name: Download YT APK
@@ -60,8 +144,8 @@ jobs:
           cat <<EOF > apps.json
           {
             "options": {
-              "arch": "arm64-v8a",
-              "outDir": "downloads"
+              "arch": "${{ env.ARCH }}",
+              "outDir": "${{ env.DOWNLOADS_DIR }}"
             },
             "apps": [
               {
@@ -79,19 +163,25 @@ jobs:
         id: cache-keystore
         uses: actions/cache@v4
         with:
-          path: yt-patched.keystore
-          key: yt-patched.keystore
+          path: ${{ env.KEYSTORE_NAME }}
+          key: ${{ env.KEYSTORE_NAME }}
+
+      - name: Set output filename
+        id: set-filename
+        run: |
+          FILENAME="yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
       - name: Patch YT APK and generate keystore
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
-            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk -o "yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
-            mv yt-*-patched.keystore yt-patched.keystore
+            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk -o "${{ steps.set-filename.outputs.filename }}"
+            mv yt-*-patched.keystore ${{ env.KEYSTORE_NAME }}
 
       - name: Patch YT APK and use cached keystore
         if: steps.cache-keystore.outputs.cache-hit == 'true'
         run: |
-            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk --keystore yt-patched.keystore -o "yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk --keystore ${{ env.KEYSTORE_NAME }} -o "${{ steps.set-filename.outputs.filename }}"
 
       - name: Generate APKmirror url
         id: generate-apkmirror-url
@@ -115,22 +205,34 @@ jobs:
           CLI_VERSION="${{ steps.get-stable-cli.outputs.version }}"
           PATCHES_VERSION="${{ steps.get-dev-patches.outputs.version }}"
           URL="${{ steps.generate-apkmirror-url.outputs.url }}"
+          FILENAME="${{ steps.set-filename.outputs.filename }}"
+          ORIGINAL_APK="${{ env.DOWNLOADS_DIR }}/yt-${YT_VERSION}.apk"
+          HAS_CHANGELOG="${{ steps.generate-changelog.outputs.has_changelog }}"
+          CHANGELOG_URL="${{ steps.generate-changelog.outputs.url }}"
+          
+          # Generate changelog section if available
+          CHANGELOG_SECTION=""
+          if [[ "$HAS_CHANGELOG" == "true" ]]; then
+            CHANGELOG_SECTION="
+          - **📝 Changelog**: [View changes]($CHANGELOG_URL)"
+          fi
+          
           cat <<EOF > yt-revanced-info.md
           ## 💡 ReVanced YT Build Information
 
           - **📺 YT Version**: \`${YT_VERSION}\` [SHA-256]($URL)
-          - **📦 APK Filename**: \`yt-${YT_VERSION}_${PATCHES_VERSION}-patched.apk\`
+          - **📦 APK Filename**: \`${FILENAME}\`
           - **🩹 ReVanced Patches Version**: \`${PATCHES_VERSION}\`
-          - **🔨 ReVanced CLI Version**: \`${CLI_VERSION}\`
-          - **📅 Build Date**: \`$(TZ=Asia/Kuala_Lumpur date +%Y-%m-%d)\` \`$(TZ=Asia/Kuala_Lumpur date +%H:%M:%S%:z)\`
+          - **🔨 ReVanced CLI Version**: \`${CLI_VERSION}\`$CHANGELOG_SECTION
+          - **📅 Build Date**: \`$(TZ=${{ env.TIMEZONE }} date +%Y-%m-%d)\` \`$(TZ=${{ env.TIMEZONE }} date +%H:%M:%S%:z)\`
 
           -----
           ### 🔐 APK file hashes 
 
           | SHA-256 Checksum | Filename |
           |-----------------|----------|
-          | \`$(sha256sum yt-${YT_VERSION}_v${PATCHES_VERSION}-patched.apk | awk '{print $1}')\` | yt-${YT_VERSION}_v${PATCHES_VERSION}-patched.apk |
-          | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | yt-${YT_VERSION}.apk (original) |
+          | \`$(sha256sum ${FILENAME} | awk '{print $1}')\` | ${FILENAME} |
+          | \`$(sha256sum ${ORIGINAL_APK} | awk '{print $1}')\` | yt-${YT_VERSION}.apk (original) |
           EOF
 
       - name: Create GitHub release
@@ -139,9 +241,9 @@ jobs:
           tag_name: yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
-            yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk
-            # downloads/yt-${{ steps.yt-version.outputs.version }}.apk
-            yt-patched.keystore
+            ${{ steps.set-filename.outputs.filename }}
+            # ${{ env.DOWNLOADS_DIR }}/yt-${{ steps.yt-version.outputs.version }}.apk
+            ${{ env.KEYSTORE_NAME }}
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
