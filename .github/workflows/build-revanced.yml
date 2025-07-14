@@ -85,13 +85,13 @@ jobs:
       - name: Patch YT APK and generate keystore
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
-            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk -o "yt-${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk -o "yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
             mv yt-*-patched.keystore yt-patched.keystore
 
       - name: Patch YT APK and use cached keystore
         if: steps.cache-keystore.outputs.cache-hit == 'true'
         run: |
-            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk --keystore yt-patched.keystore -o "yt-${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+            java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp downloads/yt-*.apk --keystore yt-patched.keystore -o "yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
 
       - name: Generate APKmirror url
         id: generate-apkmirror-url
@@ -129,17 +129,17 @@ jobs:
 
           | SHA-256 Checksum | Filename |
           |-----------------|----------|
-          | \`$(sha256sum yt-${YT_VERSION}_${PATCHES_VERSION}-patched.apk | awk '{print $1}')\` | yt-${YT_VERSION}_${PATCHES_VERSION}-patched.apk |
+          | \`$(sha256sum yt-${YT_VERSION}_v${PATCHES_VERSION}-patched.apk | awk '{print $1}')\` | yt-${YT_VERSION}_v${PATCHES_VERSION}-patched.apk |
           | \`$(sha256sum downloads/yt-${YT_VERSION}.apk | awk '{print $1}')\` | yt-${YT_VERSION}.apk (original) |
           EOF
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: yt-${{ steps.yt-version.outputs.version }}(${{ steps.get-dev-patches.outputs.version }})
+          tag_name: yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
-            yt-${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}-patched.apk
+            yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk
             # downloads/yt-${{ steps.yt-version.outputs.version }}.apk
             yt-patched.keystore
           make_latest: true
