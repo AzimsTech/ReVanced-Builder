@@ -3,7 +3,7 @@ name: Build ReVanced YT
 on:
   workflow_dispatch:  # Manual trigger
   schedule:
-    - cron: '0 0 * * *'  # Daily build
+    - cron: '0 12 * * *'  # Daily build at 8:00 PM MYT (12:00 UTC)
 
 permissions:
   contents: write
