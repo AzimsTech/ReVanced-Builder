@@ -34,17 +34,62 @@ jobs:
       - name: Make scripts executable
         run: chmod +x *.sh
 
-      - name: Get ReVanced CLI (Stable)
-        id: get-stable-cli
+      - name: Get ReVanced CLI version (Stable)
+        id: get-stable-cli-version
         run: |
-          VERSION=$(./get-stable-cli.sh)
+          VERSION=$(./get-stable-cli.sh --version-only)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get Dev Patches
-        id: get-dev-patches
+      - name: Cache ReVanced CLI
+        id: cache-cli
+        uses: actions/cache@v4
+        with:
+          path: revanced-cli-*-all.jar
+          key: revanced-cli-${{ steps.get-stable-cli-version.outputs.version }}
+
+      - name: Download ReVanced CLI
+        if: steps.cache-cli.outputs.cache-hit != 'true'
+        run: |
+          VERSION=$(./get-stable-cli.sh)
+          echo "Downloaded CLI version: $VERSION"
+
+      - name: Get Dev Patches version
+        id: get-dev-patches-version
+        run: |
+          VERSION=$(./get-dev-rvp.sh --version-only)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Cache ReVanced Patches
+        id: cache-patches
+        uses: actions/cache@v4
+        with:
+          path: patches-*-dev.*.rvp
+          key: revanced-patches-${{ steps.get-dev-patches-version.outputs.version }}
+
+      - name: Download ReVanced Patches
+        if: steps.cache-patches.outputs.cache-hit != 'true'
         run: |
           VERSION=$(./get-dev-rvp.sh)
+          echo "Downloaded patches version: $VERSION"
+
+      - name: Get APKMirror Downloader version
+        id: get-apkmd-version
+        run: |
+          VERSION=$(./get-apkmd.sh --version-only)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Cache APKMirror Downloader
+        id: cache-apkmd
+        uses: actions/cache@v4
+        with:
+          path: apkmd
+          key: apkmd-${{ steps.get-apkmd-version.outputs.version }}
+
+      - name: Download APKMirror Downloader
+        if: steps.cache-apkmd.outputs.cache-hit != 'true'
+        run: |
+          VERSION=$(./get-apkmd.sh)
+          echo "Downloaded APKMirror Downloader version: $VERSION"
 
       - name: Determine YT Version
         id: yt-version
@@ -67,7 +112,7 @@ jobs:
           git tag --sort=-version:refname | head -5 || echo "No tags found"
           
           # Get current patch version for comparison
-          CURRENT_PATCH="${{ steps.get-dev-patches.outputs.version }}"
+          CURRENT_PATCH="${{ steps.get-dev-patches-version.outputs.version }}"
           echo "=== Current patch version: $CURRENT_PATCH ==="
           
           # Get tags that match the new format (v<yt_version>_<patch_version>)
@@ -111,7 +156,7 @@ jobs:
         id: generate-changelog
         run: |
           LAST_PATCH="${{ steps.get-last-patch.outputs.last_patch_version }}"
-          CURRENT_PATCH="${{ steps.get-dev-patches.outputs.version }}"
+          CURRENT_PATCH="${{ steps.get-dev-patches-version.outputs.version }}"
           
           if [[ "$LAST_PATCH" != "none" && "$LAST_PATCH" != "$CURRENT_PATCH" ]]; then
             CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/v${LAST_PATCH}...v${CURRENT_PATCH}"
@@ -120,12 +165,6 @@ jobs:
           else
             echo "has_changelog=false" >> $GITHUB_OUTPUT
           fi
-    
-      - name: Get APKMirror Downloader
-        id: get-apkmd
-        run: |
-          VERSION=$(./get-apkmd.sh)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Cache YT APK 
         id: cache-apk
@@ -167,7 +206,7 @@ jobs:
       - name: Set output filename
         id: set-filename
         run: |
-          FILENAME="yt_${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+          FILENAME="yt_${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches-version.outputs.version }}-patched.apk"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
       - name: Patch YT APK and generate keystore
@@ -200,8 +239,8 @@ jobs:
       - name: Generate build information
         run: |
           YT_VERSION="${{ steps.yt-version.outputs.version }}"
-          CLI_VERSION="${{ steps.get-stable-cli.outputs.version }}"
-          PATCHES_VERSION="${{ steps.get-dev-patches.outputs.version }}"
+          CLI_VERSION="${{ steps.get-stable-cli-version.outputs.version }}"
+          PATCHES_VERSION="${{ steps.get-dev-patches-version.outputs.version }}"
           URL="${{ steps.generate-apkmirror-url.outputs.url }}"
           FILENAME="${{ steps.set-filename.outputs.filename }}"
           ORIGINAL_APK="${{ env.DOWNLOADS_DIR }}/yt-${YT_VERSION}.apk"
@@ -220,7 +259,7 @@ jobs:
 
           - **📺 YT Version**: \`${YT_VERSION}\` [SHA-256]($URL)
           - **📦 APK Filename**: \`${FILENAME}\`
-          - **🩹 ReVanced Patches Version**: \`${PATCHES_VERSION}\`
+          - **🧩 ReVanced Patches Version**: \`${PATCHES_VERSION}\`
           - **🔨 ReVanced CLI Version**: \`${CLI_VERSION}\`$CHANGELOG_SECTION
           - **📅 Build Date**: \`$(TZ=${{ env.TIMEZONE }} date +%Y-%m-%d)\` \`$(TZ=${{ env.TIMEZONE }} date +%H:%M:%S%:z)\`
 
@@ -236,8 +275,8 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: "📺 YT ${{ steps.yt-version.outputs.version }} | 🧩 ${{ steps.get-dev-patches.outputs.version }}"
-          tag_name: v${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}
+          name: "📺 YT ${{ steps.yt-version.outputs.version }} | 🧩 ${{ steps.get-dev-patches-version.outputs.version }}"
+          tag_name: v${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches-version.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
             ${{ steps.set-filename.outputs.filename }}
