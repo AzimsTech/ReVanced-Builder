@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 latest=$(java -jar revanced-cli-*-all.jar list-patches --with-packages --with-versions --with-options patches-*-dev.*.rvp | \
 awk '
 /^Index: 193$/ { in_block=1 }
@@ -8,5 +10,4 @@ END {
   for (v in versions) print v
 }' | sort -V | tail -n1)
 
-
-echo "Suggested YT version: $latest "
+echo "$latest"

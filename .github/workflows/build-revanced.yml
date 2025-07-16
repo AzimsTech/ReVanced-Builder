@@ -37,19 +37,19 @@ jobs:
       - name: Get ReVanced CLI (Stable)
         id: get-stable-cli
         run: |
-          VERSION=$(./get-stable-cli.sh | sed -n 's|.*/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)/.*|\1|p' | head -n1)
+          VERSION=$(./get-stable-cli.sh)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get Dev Patches
         id: get-dev-patches
         run: |
-          VERSION=$(./get-dev-rvp.sh | grep -oE 'patches-[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+' | head -n1 | sed 's/^patches-//')
+          VERSION=$(./get-dev-rvp.sh)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Determine YT Version
         id: yt-version
         run: |
-          VERSION=$(./fetch-yt-ver.sh | awk '{print $NF}')
+          VERSION=$(./fetch-yt-ver.sh)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get last release tag and extract patch version
@@ -122,7 +122,10 @@ jobs:
           fi
     
       - name: Get APKMirror Downloader
-        run: ./get-apkmd.sh
+        id: get-apkmd
+        run: |
+          VERSION=$(./get-apkmd.sh)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Cache YT APK 
         id: cache-apk
