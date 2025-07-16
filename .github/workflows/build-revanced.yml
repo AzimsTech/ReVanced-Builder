@@ -67,11 +67,11 @@ jobs:
           git tag --sort=-version:refname | head -5 || echo "No tags found"
           
           # Get current patch version for comparison
-          CURRENT_PATCH="v${{ steps.get-dev-patches.outputs.version }}"
+          CURRENT_PATCH="${{ steps.get-dev-patches.outputs.version }}"
           echo "=== Current patch version: $CURRENT_PATCH ==="
           
-          # Get tags that match the new format (contains underscore and v prefix)
-          MATCHING_TAGS=$(git tag --sort=-version:refname | grep -E ".*_v[0-9]+\.[0-9]+\.[0-9]+" || echo "")
+          # Get tags that match the new format (v<yt_version>_<patch_version>)
+          MATCHING_TAGS=$(git tag --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+_[0-9]+\.[0-9]+\.[0-9]+" || echo "")
           echo "=== Matching tags (new format): ==="
           echo "$MATCHING_TAGS"
           
@@ -80,13 +80,8 @@ jobs:
           if [[ -n "$MATCHING_TAGS" ]]; then
             while IFS= read -r tag; do
               if [[ -n "$tag" ]]; then
-                # Extract patch version from this tag
-                TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/.*_\(v[0-9]\+\.[0-9]\+\.[0-9]\+-dev\.[0-9]\+\).*/\1/p')
-                
-                # If no -dev part, try without it
-                if [[ -z "$TAG_PATCH_VERSION" ]]; then
-                  TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/.*_\(v[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
-                fi
+                # Extract patch version from this tag (everything after the underscore)
+                TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/^v[0-9]\+\.[0-9]\+\.[0-9]\+_\(.*\)/\1/p')
                 
                 echo "Tag: $tag -> Patch: $TAG_PATCH_VERSION"
                 
@@ -116,10 +111,10 @@ jobs:
         id: generate-changelog
         run: |
           LAST_PATCH="${{ steps.get-last-patch.outputs.last_patch_version }}"
-          CURRENT_PATCH="v${{ steps.get-dev-patches.outputs.version }}"
+          CURRENT_PATCH="${{ steps.get-dev-patches.outputs.version }}"
           
           if [[ "$LAST_PATCH" != "none" && "$LAST_PATCH" != "$CURRENT_PATCH" ]]; then
-            CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/${LAST_PATCH}...${CURRENT_PATCH}"
+            CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/v${LAST_PATCH}...v${CURRENT_PATCH}"
             echo "url=$CHANGELOG_URL" >> $GITHUB_OUTPUT
             echo "has_changelog=true" >> $GITHUB_OUTPUT
           else
@@ -169,7 +164,7 @@ jobs:
       - name: Set output filename
         id: set-filename
         run: |
-          FILENAME="yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}-patched.apk"
+          FILENAME="yt_${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}-patched.apk"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
       - name: Patch YT APK and generate keystore
@@ -238,11 +233,11 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: yt-${{ steps.yt-version.outputs.version }}_v${{ steps.get-dev-patches.outputs.version }}
+          name: "📺 YT ${{ steps.yt-version.outputs.version }} | 🧩 ${{ steps.get-dev-patches.outputs.version }}"
+          tag_name: v${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
             ${{ steps.set-filename.outputs.filename }}
-            # ${{ env.DOWNLOADS_DIR }}/yt-${{ steps.yt-version.outputs.version }}.apk
             ${{ env.KEYSTORE_NAME }}
           make_latest: true
         env:
