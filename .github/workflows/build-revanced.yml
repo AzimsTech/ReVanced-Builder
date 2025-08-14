@@ -100,66 +100,30 @@ jobs:
       - name: Get last release tag and extract patch version
         id: get-last-patch
         run: |
-          # Fetch tags to make sure we have them
-          git fetch --tags || echo "Failed to fetch tags"
-          
-          # Debug: Show git status and available tags
-          echo "=== Git Status ==="
-          git status --porcelain
-          echo "=== All tags (sorted) ==="
-          git tag --sort=-version:refname || echo "No tags found"
-          echo "=== Last 5 tags ==="
-          git tag --sort=-version:refname | head -5 || echo "No tags found"
-          
-          # Get current patch version for comparison
-          CURRENT_PATCH="${{ steps.get-dev-patches-version.outputs.version }}"
-          echo "=== Current patch version: $CURRENT_PATCH ==="
-          
-          # Get tags that match the new format (v<yt_version>_<patch_version>)
-          MATCHING_TAGS=$(git tag --sort=-version:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+_[0-9]+\.[0-9]+\.[0-9]+" || echo "")
-          echo "=== Matching tags (new format): ==="
-          echo "$MATCHING_TAGS"
-          
-          # Find the most recent tag that has a different patch version than current
-          LAST_TAG="none"
-          if [[ -n "$MATCHING_TAGS" ]]; then
-            while IFS= read -r tag; do
-              if [[ -n "$tag" ]]; then
-                # Extract patch version from this tag (everything after the underscore)
-                TAG_PATCH_VERSION=$(echo "$tag" | sed -n 's/^v[0-9]\+\.[0-9]\+\.[0-9]\+_\(.*\)/\1/p')
-                
-                echo "Tag: $tag -> Patch: $TAG_PATCH_VERSION"
-                
-                # If this tag's patch version is different from current, use it
-                if [[ "$TAG_PATCH_VERSION" != "$CURRENT_PATCH" ]]; then
-                  LAST_TAG="$tag"
-                  LAST_PATCH_VERSION="$TAG_PATCH_VERSION"
-                  break
-                fi
-              fi
-            done <<< "$MATCHING_TAGS"
-          fi
-          
-          echo "=== Selected last tag: $LAST_TAG ==="
-          echo "=== Last patch version: $LAST_PATCH_VERSION ==="
-          
-          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
-          
-          if [[ "$LAST_TAG" != "none" ]]; then
-            echo "last_patch_version=$LAST_PATCH_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "=== No previous tags found with different patch version ==="
-            echo "last_patch_version=none" >> $GITHUB_OUTPUT
-          fi
+          latest_version=$(./get-dev-rvp.sh || true)
+          current_tag=$(git tag -l --sort=-version:refname | head -n1 || true)
+
+          # If equal, fallback to previous tag
+          [ "$latest_version" = "$current_tag" ] && \
+            current_tag=$(git tag -l --sort=-version:refname | sed -n '2p' || true)
+
+          # Defaults
+          [ -z "$latest_version" ] && latest_version="none"
+          [ -z "$current_tag" ] && current_tag="none"
+
+          {
+            echo "latest_version=$latest_version"
+            echo "current_tag=$current_tag"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog URL
         id: generate-changelog
         run: |
-          LAST_PATCH="${{ steps.get-last-patch.outputs.last_patch_version }}"
-          CURRENT_PATCH="${{ steps.get-dev-patches-version.outputs.version }}"
-          
-          if [[ "$LAST_PATCH" != "none" && "$LAST_PATCH" != "$CURRENT_PATCH" ]]; then
-            CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/v${LAST_PATCH}...v${CURRENT_PATCH}"
+          current_tag="${{ steps.get-last-patch.outputs.current_tag }}"
+          latest_version="${{ steps.get-last-patch.outputs.latest_version }}"
+
+          if [[ "$latest_version" != "none" && "$latest_version" != "$current_tag" ]]; then
+            CHANGELOG_URL="https://github.com/ReVanced/revanced-patches/compare/${current_tag}...${latest_version}"
             echo "url=$CHANGELOG_URL" >> $GITHUB_OUTPUT
             echo "has_changelog=true" >> $GITHUB_OUTPUT
           else
@@ -276,7 +240,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: "📺 YT ${{ steps.yt-version.outputs.version }} | 🧩 ${{ steps.get-dev-patches-version.outputs.version }}"
-          tag_name: v${{ steps.get-dev-patches-version.outputs.version }}
+          tag_name: ${{ steps.get-dev-patches-version.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
             ${{ steps.set-filename.outputs.filename }}

@@ -52,5 +52,5 @@ echo "Downloading: $download_url" >&2
 curl -L "$download_url" -o "${download_url##*/}"
 
 filename="${download_url##*/}"
-version_name=$(echo "$filename" | sed -E 's/^patches-(.+)\.rvp$/\1/')
+version_name=$(echo "$filename" | sed -E 's/^patches-(.+)\.rvp$/v\1/')
 echo "$version_name"
