@@ -22,7 +22,7 @@ jobs:
         id: get-last-patch
         run: |
           chmod +x *.sh
-          latest_version=$(./get-dev-rvp.sh || true)
+          latest_version=$(./get-dev-rvp.sh --version-only || true)
           current_tag=$(git tag -l --sort=-version:refname | head -n1 || true)
 
           # Defaults
