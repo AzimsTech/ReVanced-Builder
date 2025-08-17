@@ -16,6 +16,7 @@ latest_tag=$(echo "$releases" \
 
 # Version-only mode
 if [[ "${1:-}" == "--version-only" ]]; then
+  echo "ReVanced Patches dev version: $latest_tag" >&2 # log to console
   echo "$latest_tag"
   exit 0
 fi

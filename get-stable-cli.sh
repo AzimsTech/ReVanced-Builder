@@ -17,6 +17,7 @@ version=$(echo "$filename" | sed -E 's/^revanced-cli-([0-9.]+)-all\.jar$/\1/')
 
 # Version-only mode
 if [[ "${1:-}" == "--version-only" ]]; then
+  echo "ReVanced CLI stable version: $version" >&2
   echo "$version"
   exit 0
 fi

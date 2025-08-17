@@ -9,6 +9,7 @@ latest_tag=$(curl -s "$API" | jq -r '.[0].tag_name // empty')
 
 # Version-only flag
 if [[ "${1:-}" == "--version-only" ]]; then
+  echo "ReVanced APKMD version: ${latest_tag#v}" >&2 # log to console
   echo "${latest_tag#v}"
   exit 0
 fi
