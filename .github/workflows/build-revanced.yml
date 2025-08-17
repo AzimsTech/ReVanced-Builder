@@ -213,7 +213,7 @@ jobs:
           CHANGELOG_SECTION=""
           if [[ "$HAS_CHANGELOG" == "true" ]]; then
             CHANGELOG_SECTION="
-          - **📝 Changelog**: [View changes]($CHANGELOG_URL)"
+          - **📝 Changelog**: [\`$(basename "$CHANGELOG_URL")\`]($CHANGELOG_URL)"
           fi
           
           cat <<EOF > yt-revanced-info.md
