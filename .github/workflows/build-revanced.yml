@@ -98,7 +98,7 @@ jobs:
       - name: Get last release tag and extract patch version
         id: get-last-patch
         run: |
-          latest_version=$(./get-dev-rvp.sh || true)
+          latest_version=$(./get-dev-rvp.sh --version-only || true)
           current_tag=$(git tag -l --sort=-version:refname | head -n1 || true)
 
           # If equal, fallback to previous tag
