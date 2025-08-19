@@ -26,7 +26,7 @@ echo "Found prerelease: $latest_tag" >&2
 download_url=$(echo "$releases" \
   | jq -r --arg tag "$latest_tag" '
     .[] | select(.tag_name == $tag) | .assets[]
-    | select(.name | test("^patches-.*-dev\\..*\\.rvp$"))
+    | select(.name | test("^patches-.*\\.rvp$"))
     | .browser_download_url' | head -n1)
 
 [ -n "$download_url" ] || { echo "❌ No .rvp found for $latest_tag"; exit 1; }
