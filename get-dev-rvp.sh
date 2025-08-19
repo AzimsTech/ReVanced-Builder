@@ -6,13 +6,12 @@ API="https://api.github.com/repos/ReVanced/revanced-patches/releases?per_page=10
 # Get releases (no retry, just fail if broken)
 releases=$(curl -s "$API" | jq '.')
 
-# Latest prerelease by semantic version
+# Latest release by publish date (stable + prerelease)
 latest_tag=$(echo "$releases" \
-  | jq -r '[.[] | select(.prerelease == true)]
-           | sort_by(.tag_name | sub("^v";"") | split(".") | map(tonumber? // 0))
-           | last | .tag_name')
+  | jq -r 'sort_by(.published_at) | last | .tag_name')
 
-[ -n "$latest_tag" ] || { echo "❌ No prerelease found"; exit 1; }
+
+[ -n "$latest_tag" ] || { echo "❌ No release found"; exit 1; }
 
 # Version-only mode
 if [[ "${1:-}" == "--version-only" ]]; then
