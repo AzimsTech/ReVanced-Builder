@@ -179,7 +179,7 @@ jobs:
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         run: |
             java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk -o "${{ steps.set-filename.outputs.filename }}"
-            mv yt-*-patched.keystore ${{ env.KEYSTORE_NAME }}
+            mv yt-*-patched.keystore
 
       - name: Patch YT APK and use cached keystore
         if: steps.cache-keystore.outputs.cache-hit == 'true'
