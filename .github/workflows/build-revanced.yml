@@ -175,14 +175,24 @@ jobs:
           FILENAME="yt_${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches-version.outputs.version }}-patched.apk"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
-      - name: Patch YT APK and generate keystore
+      - name: Download keystore from latest release
+        id: download-keystore
         if: steps.cache-keystore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
+            | jq -r '.assets[] | select(.name | endswith(".keystore")) | .browser_download_url' \
+            | xargs -r curl -sL -o ${{ env.KEYSTORE_NAME }}
+          [ -f ${{ env.KEYSTORE_NAME }} ] && echo "keystore_found=true" >> $GITHUB_OUTPUT || echo "keystore_found=false" >> $GITHUB_OUTPUT
+
+      - name: Patch YT APK and generate keystore
+        if: steps.cache-keystore.outputs.cache-hit != 'true' && steps.download-keystore.outputs.keystore_found != 'true'
         run: |
             java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk -o "${{ steps.set-filename.outputs.filename }}"
             mv yt_*-patched.keystore ${{ env.KEYSTORE_NAME }}
 
-      - name: Patch YT APK and use cached keystore
-        if: steps.cache-keystore.outputs.cache-hit == 'true'
+      - name: Patch YT APK with existing keystore
+        if: steps.cache-keystore.outputs.cache-hit == 'true' || steps.download-keystore.outputs.keystore_found == 'true'
         run: |
             java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk --keystore ${{ env.KEYSTORE_NAME }} -o "${{ steps.set-filename.outputs.filename }}"
 
