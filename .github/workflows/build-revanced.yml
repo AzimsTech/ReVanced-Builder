@@ -91,8 +91,8 @@ jobs:
       
       - name: Debug patches content
         run: |
-          java -jar revanced-cli-*-all.jar list-patches --with-packages --with-versions patches-*-dev.*.rvp | grep -A 20 "youtube" | head -n 30
-
+          java -jar revanced-cli-*-all.jar list-patches --with-packages --with-versions patches-*-dev.*.rvp | grep -A 10 "com.google.android.youtube$"
+          
       - name: Determine YT Version
         id: yt-version
         run: |
