@@ -19,6 +19,7 @@
 | `get-dev-rvp.sh`    | Retrieves and downloads the latest pre-release of the [revanced-patches][patches-url] .RVP patch file.                                                              |
 | `fetch-yt-ver.sh`   | Uses [revanced-cli][cli-url] to extract and print the latest supported YT version from [revanced-patches][patches-url]                                              |
 | `get-apkmd.sh`      | Fetch the latest apkmd binary release from the [tanishqmanuja/apkmirror-downloader][apkmd-url] GitHub repo , download it, save it as apkmd, and make it executable. |
+| `get-keystore.sh`      | Fetch the existing keystore from the release, download it and store in cache. |
 
 
 <!-- Shields -->

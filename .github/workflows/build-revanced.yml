@@ -88,7 +88,7 @@ jobs:
         run: |
           VERSION=$(./get-apkmd.sh)
           echo "Downloaded APKMirror Downloader version: $VERSION"
-
+          
       - name: Determine YT Version
         id: yt-version
         run: |
@@ -171,14 +171,22 @@ jobs:
           FILENAME="yt_${{ steps.yt-version.outputs.version }}_${{ steps.get-dev-patches-version.outputs.version }}-patched.apk"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
 
-      - name: Patch YT APK and generate keystore
+      - name: Download keystore from latest release
+        id: download-keystore
         if: steps.cache-keystore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          ./get-keystore.sh "${{ github.repository }}" "${{ env.KEYSTORE_NAME }}"
+          echo "keystore_found=true" >> $GITHUB_OUTPUT
+
+      - name: Patch YT APK and generate keystore
+        if: steps.cache-keystore.outputs.cache-hit != 'true' && steps.download-keystore.outputs.keystore_found != 'true'
         run: |
             java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk -o "${{ steps.set-filename.outputs.filename }}"
-            mv yt-*-patched.keystore ${{ env.KEYSTORE_NAME }}
+            mv yt_*-patched.keystore ${{ env.KEYSTORE_NAME }}
 
-      - name: Patch YT APK and use cached keystore
-        if: steps.cache-keystore.outputs.cache-hit == 'true'
+      - name: Patch YT APK with existing keystore
+        if: steps.cache-keystore.outputs.cache-hit == 'true' || steps.download-keystore.outputs.keystore_found == 'true'
         run: |
             java -jar revanced-cli-*-all.jar patch -p patches-*-dev.*.rvp ${{ env.DOWNLOADS_DIR }}/yt-*.apk --keystore ${{ env.KEYSTORE_NAME }} -o "${{ steps.set-filename.outputs.filename }}"
 
@@ -241,8 +249,8 @@ jobs:
           tag_name: ${{ steps.get-dev-patches-version.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
-            ${{ steps.set-filename.outputs.filename }}
-            ${{ env.KEYSTORE_NAME }}
+            *.apk
+            *.keystore
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
