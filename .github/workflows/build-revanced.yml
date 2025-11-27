@@ -180,8 +180,9 @@ jobs:
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
-          ./get-keystore.sh
-          
+          ./get-keystore.sh "${{ github.repository }}" "${{ env.KEYSTORE_NAME }}"
+          echo "keystore_found=true" >> $GITHUB_OUTPUT
+
       - name: Patch YT APK and generate keystore
         if: steps.cache-keystore.outputs.cache-hit != 'true' && steps.download-keystore.outputs.keystore_found != 'true'
         run: |
