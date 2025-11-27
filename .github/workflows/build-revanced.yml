@@ -244,8 +244,8 @@ jobs:
           tag_name: ${{ steps.get-dev-patches-version.outputs.version }}
           body_path: yt-revanced-info.md
           files: |
-            ${{ steps.set-filename.outputs.filename }}
-            ${{ env.KEYSTORE_NAME }}
+            *.apk
+            *.keystore
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
