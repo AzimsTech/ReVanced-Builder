@@ -180,28 +180,31 @@ jobs:
         if: steps.cache-keystore.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
-          echo "Checking for keystore in latest release..."
-          RELEASE_DATA=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest)
+          API="https://api.github.com/repos/${{ github.repository }}/releases?per_page=1"
           
-          if [ "$(echo "$RELEASE_DATA" | jq -r '.message // empty')" != "Not Found" ]; then
-            echo "Release found, searching for keystore..."
-            KEYSTORE_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[]? | select(.name | endswith(".keystore")) | .browser_download_url')
-            
-            if [ -n "$KEYSTORE_URL" ]; then
-              echo "Downloading keystore from: $KEYSTORE_URL"
-              curl -sL "$KEYSTORE_URL" -o ${{ env.KEYSTORE_NAME }}
-            else
-              echo "No keystore found in release assets"
-            fi
-          else
+          # Get latest tag
+          latest_tag=$(curl -s "$API" | jq -r '.[0].tag_name // empty')
+          
+          if [ -z "$latest_tag" ]; then
             echo "No release found"
+            echo "keystore_found=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
           
-          if [ -f ${{ env.KEYSTORE_NAME }} ]; then
-            echo "Keystore downloaded successfully"
+          echo "Found release: $latest_tag"
+          
+          # Find keystore download URL
+          keystore_url=$(curl -s "$API" | jq -r \
+            --arg tag "$latest_tag" \
+            '.[] | select(.tag_name==$tag) | .assets[] | select(.name | endswith(".keystore")) | .browser_download_url' \
+            | head -n1)
+          
+          if [ -n "$keystore_url" ]; then
+            echo "Downloading keystore from: $keystore_url"
+            curl -sL "$keystore_url" -o ${{ env.KEYSTORE_NAME }}
             echo "keystore_found=true" >> $GITHUB_OUTPUT
           else
-            echo "No keystore available"
+            echo "No keystore found in release"
             echo "keystore_found=false" >> $GITHUB_OUTPUT
           fi
 
